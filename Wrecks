@@ -1,0 +1,245 @@
+USE train_wreck;
+
+CREATE TABLE wrecks (
+    railroad_code TEXT,
+    railroad_name TEXT,
+    report_year TEXT,
+    time TEXT,
+    month TEXT,
+    day TEXT,
+    hour TEXT,
+    minute TEXT,
+    nearest_station TEXT,
+    state_name TEXT,
+    highway_user TEXT,
+    highway_user_position TEXT,
+    equipment_involved TEXT,
+    equipment_struck TEXT,
+    temperature TEXT,
+    visibility TEXT,
+    weather_condition TEXT,
+    equipment_type TEXT,
+    track_type TEXT,
+    number_of_locomotive_units TEXT,
+    number_of_train_cars TEXT,
+    train_speed TEXT,
+    crossing_warning_expanded_12 TEXT,
+    crossing_warning_location TEXT,   
+    user_struck_by_2nd_train TEXT,
+    highway_user_action TEXT,
+    view_obstruction TEXT,
+    driver_condition TEXT,
+    driver_in_vehicle TEXT,
+    vehicle_damage_cost TEXT,
+    number_vehicle_occupants TEXT,
+    employees_killed_for_reporting_railroad TEXT,
+    employees_injured_for_reporting_railroad TEXT,
+    passengers_killed_for_reporting_railroad TEXT,
+    passengers_injured_for_reporting_railroad TEXT
+);
+
+SELECT * FROM wrecks;
+
+-- find the top 20 stations where train accidents occur
+SELECT nearest_station, COUNT(*) as count
+FROM wrecks
+WHERE nearest_station IS NOT NULL
+GROUP BY nearest_station
+ORDER BY count DESC
+LIMIT 20;
+-- Houston, 1515, Springfield 765, Baton Rouge 738, Columbus 720, Detroit 656, Jackson 651, Memphis 618, Monroe 595, Greenville 595, Seattle 582, Marion 558, 
+-- Green Bay 542, Beaumont 538, Dallas 532, Birmingham 518, Chicago 507, Lafayette 503, Decatur 493, Richmond 492, Gary 466
+
+-- In which year did the most collisions occur?
+SELECT report_year, COUNT(*) AS collision_count
+FROM wrecks
+GROUP BY report_year
+ORDER BY collision_count;
+-- In 1978, 13,296 collisions occured. That was the highest total of any year.
+
+-- In which month did the maximum number of accidents happen?
+SELECT month, COUNT(*) AS collision_count
+FROM wrecks
+GROUP BY month
+ORDER BY collision_count;
+-- January has the most collisions of 24,723, followed by December at 23,477.
+
+-- Are there more accidents around sunrise/sunset?
+SELECT visibility, COUNT(*) AS num_accidents
+FROM wrecks
+WHERE visibility IN ('DUSK', 'DAWN')
+  AND visibility IS NOT NULL
+GROUP BY visibility;
+-- Dusk/sunset 9211, dawn/sunrise 7169
+
+-- What is the average visibility at the time of collision?
+SELECT AVG(CASE WHEN visibility = 'day' THEN 4
+                WHEN visibility = 'dawn' THEN 3
+                WHEN visibility = 'dusk' THEN 2
+                WHEN visibility = 'dark' THEN 1
+                ELSE 0 END) AS average_visibility
+FROM wrecks
+WHERE visibility IS NOT NULL;
+-- average visibility 2.8251, which matches the previous query that shows that collisions mostly occur at dusk/sunset
+
+-- Categorize the position of the other party when struck
+SELECT 
+  CASE 
+    WHEN highway_user_position LIKE '%BLOCKED ON CROSSING BY GATES%' THEN 'Blocked by gates'
+    WHEN highway_user_position LIKE '%MOVING OVER CROSSING%' THEN 'Moving over crossing'
+    WHEN highway_user_position LIKE '%STALLED OR STUCK ON CROSSING%' THEN 'Stalled or stuck'
+    WHEN highway_user_position LIKE '%STOPPED ON CROSSING%' THEN 'Stopped on crossing'
+    WHEN highway_user_position LIKE '%TRAPPED ON CROSSING BY TRAFFIC%' THEN 'Trapped by traffic on crossing'
+    ELSE 'Other'
+  END AS position_type, 
+  COUNT(*) AS num_accidents
+FROM wrecks
+WHERE highway_user_position IS NOT NULL
+GROUP BY position_type
+ORDER BY num_accidents DESC;
+-- moving over crossing 169,448, stopped on crossing 40223, stalled or stuck 24,723, trapped by traffic 1,154, blocked by gates 132
+
+-- Average train speed at impact
+SELECT AVG(train_speed) AS avg_train_speed
+FROM wrecks;
+-- average speed is 24.38 mph
+
+-- Average temperature at collision
+SELECT AVG(temperature) AS avg_temperature
+FROM wrecks;
+-- average temp 56.36 degrees
+
+-- Categorize weather types at collision
+SELECT weather_condition, COUNT(*) AS count
+FROM wrecks
+WHERE weather_condition IN ('clear', 'cloudy', 'fog', 'rain', 'sleet', 'snow')
+GROUP BY weather_condition
+ORDER BY count DESC;
+-- clear 155,661, cloudy 49,967, rain 18,548, snow 6,866, fog 4,034, sleet 604
+
+-- Total number of deaths
+SELECT SUM(passengers_killed_for_reporting_railroad) + SUM(employees_killed_for_reporting_railroad) AS total_deaths
+FROM wrecks;
+-- 126 deaths
+
+-- Total number of injured individuals
+SELECT SUM(passengers_injured_for_reporting_railroad) + SUM(employees_injured_for_reporting_railroad) AS total_deaths
+FROM wrecks;
+-- 7,998 injured individuals
+
+-- Number of collisions each year
+SELECT report_year, COUNT(*) AS num_collisions
+FROM wrecks
+GROUP BY report_year
+ORDER BY report_year;
+-- overall downward trend starting with 11,712 in 1975 to 324 in 2021
+
+-- What is the most common state for train collisions?
+SELECT state_name, COUNT(*) AS num_collisions
+FROM wrecks
+WHERE state_name IS NOT NULL
+GROUP BY state_name
+ORDER BY num_collisions DESC;
+-- Texas leads at 24,540 and Hawaii had only one
+
+-- How many collisions occurred at each type of highway user?
+SELECT highway_user, COUNT(*) AS num_collisions
+FROM wrecks
+WHERE highway_user IS NOT NULL
+GROUP BY highway_user
+ORDER BY num_collisions DESC;
+-- auto 140,960, truck 44,084, truck-trailer 24,006, pick-up truck 8,714, other 6,451, pedestrian 4,827, other motor vehicle 2,615, van 2,197, bus 371
+-- school bus 172
+
+-- What is the most common cause of view obstruction?
+SELECT view_obstruction, COUNT(*) AS num_collisions
+FROM wrecks
+WHERE view_obstruction IS NOT NULL
+GROUP BY view_obstruction
+ORDER BY num_collisions DESC;
+-- not obstructed 217,503, permanent structure 6,094, vegetation 4,259, other 2,167, topogrophy 1,908, standing railroad equipment 1,705, passing train 986
+-- highway vehicles 829
+
+-- How many collisions occurred for each equipment involved in the collision?
+SELECT equipment_involved, COUNT(*) AS num_collisions
+FROM wrecks
+WHERE equipment_involved IS NOT NULL
+GROUP BY equipment_involved
+ORDER BY num_collisions DESC;
+-- train (units pulling) 191,400, train (units pushing) 17,777, light loco(s) moving 16,803, car(s) (moving) 4,573, train (standing) 2,968, other 997
+-- light loco(s) (standing) 280, car(s) (standing) 258, train pushing -RCL 215, EMU Locomotive(s) 173, Train pulling - RCL 148, DMU Locomotive(s) 88
+
+-- How many collisions occurred at each hour of the day?
+SELECT hour, COUNT(*) as count
+FROM wrecks
+GROUP BY hour
+ORDER BY count DESC;
+-- this is incorrect because the time is in military time, but this column only goes 1-12
+
+-- What is the ratio of employees killed or injured for reporting railroad versus passengers or other highway users?
+SELECT SUM(employees_killed_for_reporting_railroad) + SUM(employees_injured_for_reporting_railroad) AS employees_total,
+       SUM(passengers_killed_for_reporting_railroad) + SUM(passengers_injured_for_reporting_railroad) AS passengers_total,
+       COUNT(*) AS total
+FROM wrecks;
+-- employees_total= 5,391, passengers_total= 2,733
+
+-- How many collisions occurred at each railway crossing warning location?
+SELECT crossing_warning_location, COUNT(*) as num_collisions
+FROM wrecks
+WHERE crossing_warning_location IS NOT NULL
+GROUP BY crossing_warning_location
+ORDER BY num_collisions DESC;
+-- Both sides 209,226, side of vehicle approach 12,460, opposite side of vehicle approach 3,277
+
+-- What is the most common time of day for collisions?
+SELECT time, COUNT(*) as num_collisions
+FROM wrecks
+GROUP BY time
+ORDER BY num_collisions DESC
+LIMIT 1;
+-- 15:30
+
+-- What is the most common weather condition for collisions in each state?
+SELECT state_name, weather_condition, COUNT(*) AS num_collisions
+FROM wrecks
+WHERE state_name IS NOT NULL AND weather_condition IS NOT NULL
+GROUP BY state_name, weather_condition
+ORDER BY state_name, num_collisions DESC;
+-- produced a 3 column table with state_name, weather_condition and num_collisions
+
+-- What is the average cost of vehicle damage per collision?
+SELECT AVG(vehicle_damage_cost) AS avg_vehicle_damage_cost
+FROM wrecks;
+-- $3,461.83
+
+-- What is the distribution of train speeds at impact?
+SELECT train_speed, COUNT(*) as num_collisions
+FROM wrecks
+WHERE train_speed IS NOT NULL
+GROUP BY train_speed
+ORDER BY num_collisions DESC;
+-- returns a 2 column table with train_speed and num_collisions
+
+-- What is the most common track type for collisions?
+SELECT track_type, COUNT(*) as num_collisions
+FROM wrecks
+WHERE track_type IS NOT NULL
+GROUP BY track_type
+ORDER BY num_collisions DESC;
+-- main 203,496, yard 16,448, industry 12,442, siding 3294
+
+-- What is the most common equipment type involved in collisions?
+SELECT equipment_type, COUNT(*) as count
+FROM wrecks
+GROUP BY equipment_type
+ORDER BY count DESC
+LIMIT 1;
+-- Freight Train 168,756
+
+-- What is the most common month for collisions?
+SELECT month, COUNT(*) AS num_collisions
+FROM wrecks
+GROUP BY month
+ORDER BY num_collisions DESC
+LIMIT 1;
+-- January 24,723, December 23,477, October 21,004 (top 3)
